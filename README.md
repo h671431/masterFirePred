@@ -39,6 +39,11 @@ FROST_CLIENT_ID=<your Frost client id>
    python -m src.frost --start 2016-01-01 --end 2026-11-01
    ```
 
+4. Match incidents to weather (nearest core station, station-day panel, takes ~10 seconds):
+   ```bash
+   python -m src.matching
+   ```
+
 Everything is stored in `data/processed/master.duckdb`.
 
 | Table | Content |
@@ -48,7 +53,10 @@ Everything is stored in `data/processed/master.duckdb`.
 | `kolonner` | Original BRIS column names → new names, and which were removed |
 | `stasjoner` | MET weather stations with coordinates |
 | `vaer_dogn_raw` | Daily weather values, long format |
-| `vaer_dogn` | View: one row per station and day (temperature, precipitation, wind, humidity, snow depth) |
+| `vaer_dogn` | View: one row per station and day (temperature, precipitation, wind, humidity, snow depth), with quality filtering |
+| `stasjon_kjerne` | Core stations with temperature on ≥ 80 % of days |
+| `hendelse_stasjon` | Each incident → nearest core station and distance (km) |
+| `panel_stasjon_dag` | One row per core station and day: weather, lags and incident counts per group |
 
 ## Data and privacy
 
@@ -61,6 +69,8 @@ The `data/` folder is in `.gitignore` and must never be committed.
 - `src/config.py` - paths and settings
 - `src/bris.py` - reading and cleaning BRIS exports
 - `src/frost.py` - Frost API (stations and daily observations)
+- `src/matching.py` - spatiotemporal matching of incidents and weather
 - `src/db.py` - DuckDB helpers
+- `figs/` - aggregated figures (no personal data)
 - `notebooks/` - exploratory notebooks
 - `data/` - local data files (not committed)
