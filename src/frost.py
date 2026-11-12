@@ -177,17 +177,42 @@ def fetch_daily(sources: list[str], start: str, end: str, elements: list[str] | 
     return df
 
 
+# Fysisk rimelige grenser per kolonne for Norge (varmerekord 35,6 °C, kulderekord -51,4 °C).
+# Verdier utenfor tas ikke med i vaer_dogn.
+PLAUSIBLE = {
+    "temp_mean": (-50, 30),
+    "temp_min": (-55, 28),
+    "temp_max": (-50, 36),
+    "nedbor": (0, 300),
+    "vind_mean": (0, 50),
+    "rh_mean": (0, 100),
+    "snodybde": (0, 1000),
+}
+
+# MET sine kvalitetskoder: 0-2 regnes som brukbare, 3 og høyere utelates.
+MAX_QUALITY = 2
+
+
 def _create_wide_view(con) -> None:
-    cases = ",\n  ".join(
-        f"max(verdi) FILTER (WHERE element = '{el}' AND timeoffset = '{off}') AS {col}"
-        for el, (col, off) in DAILY_ELEMENTS.items()
-    )
+    """Bredt format med kvalitetskontroll.
+
+    - Flere tidsserier for samme stasjon/dag/element (vanlig for snødybde) slås sammen med gjennomsnitt.
+    - Verdier med kvalitetskode over MAX_QUALITY utelates.
+    - Verdier utenfor PLAUSIBLE utelates.
+    vaer_dogn_raw beholder alle verdier uendret.
+    """
+    cases = []
+    for el, (col, off) in DAILY_ELEMENTS.items():
+        lo, hi = PLAUSIBLE[col]
+        cases.append(
+            f"avg(verdi) FILTER (WHERE element = '{el}' AND timeoffset = '{off}' "
+            f"AND (kvalitet IS NULL OR kvalitet <= {MAX_QUALITY}) "
+            f"AND verdi BETWEEN {lo} AND {hi}) AS {col}"
+        )
     con.execute(
-        f"""CREATE OR REPLACE VIEW vaer_dogn AS
-SELECT stasjon_id, dato,
-  {cases}
-FROM vaer_dogn_raw
-GROUP BY stasjon_id, dato"""
+        "CREATE OR REPLACE VIEW vaer_dogn AS\nSELECT stasjon_id, dato,\n  "
+        + ",\n  ".join(cases)
+        + "\nFROM vaer_dogn_raw\nGROUP BY stasjon_id, dato"
     )
 
 
