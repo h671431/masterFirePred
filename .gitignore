@@ -5,4 +5,5 @@ __pycache__/
 *.pyc
 
 data/raw/
-data/processed/.DS_Store
+data/processed/
+.DS_Store
